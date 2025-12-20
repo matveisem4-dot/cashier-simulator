@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Сообщение об успешной оплате после таймера) -->
+<!-- public/cashier.html (Мгновенная оплата по улыбке) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -40,17 +40,7 @@
         .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; transition: background-color 0.3s; }
         .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
-        #timerDisplay { 
-            font-size: 4em; 
-            color: #00703C; 
-            margin-top: 20px;
-            display: none; 
-            animation: pulse 1s infinite alternate; 
-        }
-        @keyframes pulse {
-            from { transform: scale(1); }
-            to { transform: scale(1.1); }
-        }
+        /* Убран стиль для #timerDisplay, так как он больше не нужен */
         input, .btn-group button { 
             padding: 15px; 
             margin-top: 15px; 
@@ -99,7 +89,7 @@
         </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
-        <div id="timerDisplay">10</div> 
+        <div id="timerDisplay" style="display: none;"></div> <!-- Элемент скрыт -->
         
         <div id="qrCodeContainer">
             <!-- QR-код появится здесь -->
@@ -115,7 +105,6 @@
     <script>
         const socket = io();
         let currentOrderId = null;
-        let timerInterval = null;
 
         function completePurchase() {
             document.getElementById('receipt').style.display = 'none';
@@ -123,8 +112,7 @@
             document.getElementById('statusMessage').innerText = 'Ожидание операции...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = ''; 
-            document.getElementById('timerDisplay').style.display = 'none';
-            if (timerInterval) clearInterval(timerInterval);
+            // Убрана логика таймера
             currentOrderId = null;
         }
 
@@ -137,8 +125,7 @@
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
-            document.getElementById('timerDisplay').style.display = 'none';
-
+            
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
@@ -148,40 +135,17 @@
             const amount = document.getElementById('amountInput').value;
             if (!amount) return alert('Введите сумму!');
             
-            completePurchase(); 
-
-            currentOrderId = 'SMILE-' + Date.now(); 
-            document.getElementById('statusMessage').innerText = 'Идет распознавание улыбки...';
-            document.getElementById('timerDisplay').style.display = 'block';
-            document.getElementById('qrCodeContainer').innerHTML = '';
-
-            let timeLeft = 10;
-            document.getElementById('timerDisplay').innerText = timeLeft;
-            
-            timerInterval = setInterval(() => {
-                timeLeft -= 1;
-                document.getElementById('timerDisplay').innerText = timeLeft;
-                if (timeLeft <= 0) {
-                    clearInterval(timerInterval); 
-                }
-            }, 1000);
-
-            setTimeout(() => {
-                 socket.emit('payment_status_update', { 
-                    status: 'paid', 
-                    orderId: currentOrderId,
-                    amount: amount
-                 });
-            }, 10000); 
+            // Сразу вызываем событие успешной оплаты
+            socket.emit('payment_status_update', { 
+                status: 'paid', 
+                orderId: 'SMILE-' + Date.now(), // Генерируем новый ID
+                amount: amount
+            });
         }
 
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
-                if (timerInterval) clearInterval(timerInterval); 
-                
-                // *** Сообщение об успешной оплате ***
-                alert(`✅ Оплата на сумму ${data.amount} ₽ прошла успешно!`);
-
+                // Это сработает как для QR-кода, так и для оплаты по улыбке
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
                 document.getElementById('statusMessage').className = 'status paid';
                 
@@ -191,7 +155,6 @@
 
                 document.getElementById('qrCodeContainer').innerHTML = ''; 
                 document.getElementById('completeButton').style.display = 'block';
-                document.getElementById('timerDisplay').style.display = 'none'; 
             }
         });
     </script>
