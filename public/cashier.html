@@ -1,0 +1,76 @@
+<!-- public/cashier.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Sberbank Kassa Simulation</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        #terminal { border: 1px solid #ccc; padding: 20px; width: 400px; }
+        .status { margin-top: 15px; font-weight: bold; }
+        .pending { color: orange; }
+        .paid { color: green; }
+        input, button { padding: 10px; margin-top: 10px; }
+        #qrCodeContainer img { width: 200px; height: 200px; }
+        #receipt { border-top: 1px dashed black; margin-top: 20px; padding-top: 10px; font-family: monospace; display: none; }
+    </style>
+</head>
+<body>
+    <h1>Симулятор POS-терминала</h1>
+    <div id="terminal">
+        <label>Сумма к оплате:</label><br>
+        <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
+        <button onclick="startPayment()">Принять оплату по QR</button>
+        
+        <div class="status pending" id="statusMessage">Ожидание операции...</div>
+        
+        <div id="qrCodeContainer">
+            <!-- QR-код появится здесь -->
+        </div>
+
+        <div id="receipt">
+            <p>ООО "Симулятор Кассы"<br>Чек №<span id="receiptOrderId"></span><br>ИТОГ: <span id="receiptAmount"></span> ₽</p>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let currentOrderId = null;
+
+        function startPayment() {
+            const amount = document.getElementById('amountInput').value;
+            if (!amount) return alert('Введите сумму!');
+
+            currentOrderId = 'ORD-' + Date.now();
+            document.getElementById('statusMessage').innerText = 'Ожидание оплаты от клиента...';
+            document.getElementById('statusMessage').className = 'status pending';
+            document.getElementById('receipt').style.display = 'none';
+
+            // 1. Присоединяемся к каналу этого заказа
+            socket.emit('join_cashier_order', currentOrderId);
+
+            // 2. Запрашиваем QR-код с сервера
+            const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
+            document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
+        }
+
+        // 3. Слушаем подтверждение оплаты от сервера (от клиента)
+        socket.on('payment_status_update', (data) => {
+            if (data.orderId === currentOrderId && data.status === 'paid') {
+                document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
+                document.getElementById('statusMessage').className = 'status paid';
+                
+                // Печать чека (показ скрытого блока)
+                document.getElementById('receiptOrderId').innerText = currentOrderId;
+                document.getElementById('receiptAmount').innerText = data.amount;
+                document.getElementById('receipt').style.display = 'block';
+                
+                // Отключаемся от канала заказа после оплаты
+                socket.emit('leave_order', currentOrderId);
+                currentOrderId = null;
+            }
+        });
+    </script>
+</body>
+</html>
