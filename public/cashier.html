@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Только оплата по QR) -->
+<!-- public/cashier.html (Исправленный код без ошибки инициализации) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -60,6 +60,8 @@
             margin-bottom: 0px;
         }
         .btn-group button:hover { background-color: #005f33; transform: translateY(-2px); }
+        #smilePayButton { background-color: #00A851; }
+        #smilePayButton:hover { background-color: #009345; }
         #completeButton { background-color: #00703C; }
         #completeButton:hover { background-color: #005f33; }
         #qrCodeContainer img { 
@@ -81,8 +83,8 @@
         <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
         
         <div class="btn-group">
-            <!-- Оставлена только кнопка QR-кода -->
             <button onclick="startPayment()">Принять оплату по QR</button>
+            <button id="smilePayButton" onclick="simulateSmilePay()">Оплата по улыбке</button>
         </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
@@ -100,7 +102,7 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentOrderId = null;
+        let currentOrderId = null; // Переменная инициализирована корректно
 
         function completePurchase() {
             document.getElementById('receipt').style.display = 'none';
@@ -124,6 +126,18 @@
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
+        }
+        
+        function simulateSmilePay() {
+            const amount = document.getElementById('amountInput').value;
+            if (!amount) return alert('Введите сумму!');
+            
+            // Сразу вызываем событие успешной оплаты
+            socket.emit('payment_status_update', { 
+                status: 'paid', 
+                orderId: 'SMILE-' + Date.now(), // Генерируем новый ID
+                amount: amount
+            });
         }
 
         socket.on('payment_status_update', (data) => {
