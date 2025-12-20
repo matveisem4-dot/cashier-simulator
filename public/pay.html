@@ -1,4 +1,4 @@
-<!-- public/pay.html (Центрирование и без дисклеймера) -->
+<!-- public/pay.html (Красивый дизайн Сбера для клиента) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,40 +6,66 @@
     <title>Оплата Сбербанк (Симулятор)</title>
     <style>
         body { 
-            font-family: sans-serif; 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             padding: 0; 
             margin: 0;
-            background-color: #f0f0f0; /* Светло-серый фон */
+            /* Фирменный градиент Сбера для фона */
+            background: linear-gradient(135deg, #004d2a 0%, #00703C 50%, #00a851 100%); 
             display: flex;
-            justify-content: center; /* Центрирует горизонтально */
-            align-items: center; /* Центрирует вертикально */
-            min-height: 100vh; /* Занимает всю высоту экрана */
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+            color: #333;
         }
         #content { 
             background-color: white; 
-            padding: 30px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-            max-width: 400px; 
+            padding: 40px; 
+            border-radius: 15px; /* Скругленные углы */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* Глубокая тень */
+            max-width: 450px; 
             margin: auto; 
             text-align: center;
+            opacity: 0.98;
         }
-        #payBtn { padding: 20px 40px; background: #00703C; /* Фирменный зеленый Сбера */ color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
-        #payBtn:disabled { background: #ccc; }
+        h1 { color: #00703C; margin-bottom: 20px; font-weight: 400; }
+        p { margin: 15px 0; }
+        .amount-display { font-size: 2em; margin: 20px 0; font-weight: bold; color: #00703C; }
+        #payBtn { 
+            padding: 15px 40px; 
+            background: #00703C; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 18px; 
+            cursor: pointer;
+            transition: background-color 0.3s;
+            box-shadow: 0 4px 10px rgba(0, 112, 60, 0.3);
+        }
+        #payBtn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
         #payBtn:hover { background-color: #005f33; }
-        #afterPaymentMessage { display: none; color: #00703C; font-weight: bold; }
-        #disclaimer { display: none !important; } /* СКРЫВАЕМ ДИСКЛЕЙМЕР */
+        #afterPaymentMessage { 
+            display: none; 
+            color: #00703C; 
+            font-weight: bold; 
+            background-color: #E8F5E9; /* Светло-зеленый фон для сообщения */
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        #loadingMessage {
+            color: #555;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <div id="content">
-        <h1>Ожидание заказа от кассира</h1>
+        <h1>Ожидание заказа</h1>
         <p id="loadingMessage">Пожалуйста, отсканируйте QR-код для начала оплаты.</p>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // ... (JavaScript код остается прежним) ...
         const socket = io();
         const urlParams = new URLSearchParams(window.location.search);
         let orderId = urlParams.get('order_id');
@@ -61,10 +87,9 @@
             if (currentOrderId && currentAmount) {
                 contentDiv.innerHTML = `
                     <h1>Подтверждение оплаты</h1>
-                    <p>Вы собираетесь оплатить заказ №<strong>${currentOrderId}</strong> на сумму <strong>${currentAmount}</strong> ₽.</p>
+                    <p>Вы собираетесь оплатить заказ №<strong>${currentOrderId}</strong> на сумму <span class="amount-display">${currentAmount} ₽</span></p>
                     <button id="payBtn" onclick="confirmPayment()">Подтвердить оплату</button>
-                    <p id="afterPaymentMessage" style="display:none; color: #00703C; font-weight: bold;">Статус оплаты передан в кассу ✅</p>
-                    <p id="disclaimer" style="display:none;">⚠️ Внимание: Это **НЕ** настоящий платежный терминал и деньги не списываются.</p>
+                    <p id="afterPaymentMessage">Статус оплаты передан в кассу ✅</p>
                 `;
             }
         }
@@ -72,9 +97,11 @@
         function confirmPayment() {
             socket.emit('confirm_payment_simulation', { orderId: orderId, amount: amount });
             
-            if(document.getElementById('payBtn')) document.getElementById('payBtn').style.display = 'none'; 
-            if(document.getElementById('disclaimer')) document.getElementById('disclaimer').style.display = 'none'; 
-            if(document.getElementById('afterPaymentMessage')) document.getElementById('afterPaymentMessage').style.display = 'block'; 
+            // После оплаты скрываем кнопку и показываем сообщение об успехе
+            const payBtn = document.getElementById('payBtn');
+            const afterPaymentMessage = document.getElementById('afterPaymentMessage');
+            if(payBtn) payBtn.style.display = 'none'; 
+            if(afterPaymentMessage) afterPaymentMessage.style.display = 'block'; 
         }
     </script>
 </body>
