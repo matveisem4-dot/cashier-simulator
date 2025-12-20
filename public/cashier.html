@@ -1,4 +1,4 @@
-<!-- public/cashier.html -->
+<!-- public/cashier.html (Обновленная версия) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -13,6 +13,8 @@
         input, button { padding: 10px; margin-top: 10px; }
         #qrCodeContainer img { width: 200px; height: 200px; }
         #receipt { border-top: 1px dashed black; margin-top: 20px; padding-top: 10px; font-family: monospace; display: none; }
+        /* Стиль для новой кнопки */
+        #completeButton { background: #007bff; color: white; border: none; cursor: pointer; display: none; }
     </style>
 </head>
 <body>
@@ -28,6 +30,9 @@
             <!-- QR-код появится здесь -->
         </div>
 
+        <!-- Новая кнопка завершения покупки -->
+        <button id="completeButton" onclick="completePurchase()">Завершить покупку</button>
+
         <div id="receipt">
             <p>ООО "Симулятор Кассы"<br>Чек №<span id="receiptOrderId"></span><br>ИТОГ: <span id="receiptAmount"></span> ₽</p>
         </div>
@@ -38,6 +43,19 @@
         const socket = io();
         let currentOrderId = null;
 
+        // Функция сброса интерфейса
+        function completePurchase() {
+            // Скрываем чек и кнопку завершения
+            document.getElementById('receipt').style.display = 'none';
+            document.getElementById('completeButton').style.display = 'none';
+            // Сбрасываем статус и возвращаем в исходное состояние
+            document.getElementById('statusMessage').innerText = 'Ожидание операции...';
+            document.getElementById('statusMessage').className = 'status pending';
+            document.getElementById('qrCodeContainer').innerHTML = ''; // Очищаем QR-код
+            currentOrderId = null;
+            // Можно добавить сброс поля input, если нужно: document.getElementById('amountInput').value = '0.00';
+        }
+
         function startPayment() {
             const amount = document.getElementById('amountInput').value;
             if (!amount) return alert('Введите сумму!');
@@ -46,6 +64,7 @@
             document.getElementById('statusMessage').innerText = 'Ожидание оплаты от клиента...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('receipt').style.display = 'none';
+            document.getElementById('completeButton').style.display = 'none'; // Убеждаемся, что кнопка скрыта
 
             // 1. Присоединяемся к каналу этого заказа
             socket.emit('join_cashier_order', currentOrderId);
@@ -65,10 +84,14 @@
                 document.getElementById('receiptOrderId').innerText = currentOrderId;
                 document.getElementById('receiptAmount').innerText = data.amount;
                 document.getElementById('receipt').style.display = 'block';
+
+                // Скрываем QR-код и показываем кнопку завершения
+                document.getElementById('qrCodeContainer').innerHTML = ''; 
+                document.getElementById('completeButton').style.display = 'block';
                 
-                // Отключаемся от канала заказа после оплаты
+                // Отключаемся от канала заказа после оплаты (если нужно)
                 socket.emit('leave_order', currentOrderId);
-                currentOrderId = null;
+                // currentOrderId = null; // Не обнуляем ID сразу, чтобы данные чека остались до нажатия "Завершить покупку"
             }
         });
     </script>
