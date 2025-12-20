@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Красивый градиент Сбера) -->
+<!-- public/cashier.html (Красивый градиент Сбера с оплатой по улыбке) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -35,9 +35,28 @@
         .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 6px; font-size: 1.1em; }
         .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
-        input, button { padding: 15px; margin-top: 15px; border-radius: 8px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; font-size: 1em; }
-        button { background-color: #00703C; color: white; border: none; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: background-color 0.3s; }
-        button:hover { background-color: #005f33; }
+        input, .btn-group button { /* Объединил стили кнопок в группу */
+            padding: 15px; 
+            margin-top: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #ccc; 
+            width: 100%; 
+            box-sizing: border-box; 
+            font-size: 1em;
+        }
+        .btn-group button {
+            background-color: #00703C; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background-color 0.3s; 
+            margin-bottom: 0px;
+        }
+        .btn-group button:hover { background-color: #005f33; }
+        #smilePayButton { background-color: #00A851; } /* Отдельный цвет для улыбки */
+        #smilePayButton:hover { background-color: #009345; }
         #completeButton { background-color: #00703C; display: none; }
         #completeButton:hover { background-color: #005f33; }
         #qrCodeContainer img { width: 250px; height: 250px; margin-top: 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
@@ -49,7 +68,12 @@
         <h1>Симулятор POS-терминала</h1>
         <label for="amountInput" style="display: block; text-align: left; margin-bottom: 5px;">Сумма к оплате:</label>
         <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
-        <button onclick="startPayment()">Принять оплату по QR</button>
+        
+        <div class="btn-group">
+            <button onclick="startPayment()">Принять оплату по QR</button>
+            <!-- Новая кнопка -->
+            <button id="smilePayButton" onclick="simulateSmilePay()">Оплата по улыбке (Тест)</button>
+        </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
         
@@ -64,7 +88,6 @@
         </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>
-    <!-- Остальной JS код из вашего файла cashier.html -->
     <script>
         const socket = io();
         let currentOrderId = null;
@@ -83,20 +106,44 @@
             if (!amount) return alert('Введите сумму!');
 
             currentOrderId = 'ORD-' + Date.now();
-            document.getElementById('statusMessage').innerText = 'Ожидание оплаты от клиента...';
+            document.getElementById('statusMessage').innerText = 'Ожидание оплаты от клиента через QR...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
 
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
-            // Эта строка теперь будет работать, потому что сервер Node.js обрабатывает этот API
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
+        
+        // НОВАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "ОПЛАТА ПО УЛЫБКЕ"
+        function simulateSmilePay() {
+            const amount = document.getElementById('amountInput').value;
+            if (!amount) return alert('Введите сумму!');
+
+            // Генерируем новый Order ID для этой транзакции
+            currentOrderId = 'SMILE-' + Date.now(); 
+
+            document.getElementById('statusMessage').innerText = 'Имитация оплаты по улыбке...';
+            document.getElementById('statusMessage').className = 'status pending';
+            document.getElementById('qrCodeContainer').innerHTML = '';
+
+            // Так как у нас нет реального сервера обработки улыбки, мы просто имитируем успешный ответ через 2 секунды
+            setTimeout(() => {
+                // Вызываем ту же функцию обновления статуса, которую слушает касса
+                 socket.emit('payment_status_update', { 
+                    status: 'paid', 
+                    orderId: currentOrderId,
+                    amount: amount,
+                    message: 'Транзакция по улыбке успешно завершена!'
+                });
+            }, 2000); 
+        }
+
 
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
-                document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
+                document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО УЛЫБКОЙ!';
                 document.getElementById('statusMessage').className = 'status paid';
                 
                 document.getElementById('receiptOrderId').innerText = currentOrderId;
