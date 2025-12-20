@@ -1,9 +1,63 @@
-meta:
-  environment: nodejs
-  toolchain:
-    name: npm
-    version: 20
-build:
-  install: npm install
-run:
-  script: node server.js
+<!-- public/pay.html (Обновленная версия) -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Оплата Сбербанк (Симулятор)</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; }
+        #payBtn { padding: 20px 40px; background: #5AD761; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; }
+        #payBtn:disabled { background: #ccc; }
+        #afterPaymentMessage { display: none; color: green; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <h1>Ожидание заказа от кассира</h1>
+        <p id="loadingMessage">Пожалуйста, отсканируйте QR-код для начала оплаты.</p>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const urlParams = new URLSearchParams(window.location.search);
+        let orderId = urlParams.get('order_id');
+        let amount = urlParams.get('amount');
+        const contentDiv = document.getElementById('content');
+
+        // При загрузке страницы клиент присоединяется к комнате своего orderId
+        if (orderId) {
+            socket.emit('client_join_order', orderId);
+            updateUI(orderId, amount);
+        }
+
+        // Обработчик НОВОГО события: кассир прислал новый заказ
+        socket.on('new_order_ready', (data) => {
+            orderId = data.orderId;
+            amount = data.amount;
+            updateUI(orderId, amount);
+        });
+
+        function updateUI(currentOrderId, currentAmount) {
+            if (currentOrderId && currentAmount) {
+                contentDiv.innerHTML = `
+                    <h1>Подтверждение оплаты (СИМУЛЯТОР)</h1>
+                    <p>Вы собираетесь оплатить заказ №<strong>${currentOrderId}</strong> на сумму <strong>${currentAmount}</strong> ₽.</p>
+                    <button id="payBtn" onclick="confirmPayment()">Подтвердить оплату</button>
+                    <p id="afterPaymentMessage" style="display:none; color: green; font-weight: bold;">Статус оплаты передан в кассу ✅</p>
+                    <p id="disclaimer" style="color: red;">⚠️ Внимание: Это **НЕ** настоящий платежный терминал и деньги не списываются.</p>
+                `;
+            }
+        }
+
+        function confirmPayment() {
+            // Отправляем на сервер сигнал об оплате конкретного заказа
+            socket.emit('confirm_payment_simulation', { orderId: orderId, amount: amount });
+            
+            document.getElementById('payBtn').style.display = 'none'; 
+            document.getElementById('disclaimer').style.display = 'none'; 
+            document.getElementById('afterPaymentMessage').style.display = 'block'; 
+        }
+    </script>
+</body>
+</html>
