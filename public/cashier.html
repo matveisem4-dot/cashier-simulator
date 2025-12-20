@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Финальный код с оплатой по улыбке и задержкой 10 секунд) -->
+<!-- public/cashier.html (С всплывающим окном при оплате по улыбке) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -119,31 +119,28 @@
             const amount = document.getElementById('amountInput').value;
             if (!amount) return alert('Введите сумму!');
             
-            // Сбрасываем предыдущее состояние
             completePurchase(); 
 
             currentOrderId = 'SMILE-' + Date.now(); 
+
+            // *** Добавление всплывающего окна (alert) ***
+            alert('Выполняется оплата по улыбке. Пожалуйста, подождите 10 секунд...');
 
             document.getElementById('statusMessage').innerText = 'Идет распознавание улыбки и списание средств (10 сек)...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = '';
 
-            // Имитируем успешный ответ сервера через 10 секунд (10000ms)
             setTimeout(() => {
-                 // Отправляем сигнал об успехе в комнату заказа (кассиру)
-                 // В данном случае, так как это симуляция в одном окне, 
-                 // socket.emit вызовет обработчик socket.on ниже.
                  socket.emit('payment_status_update', { 
                     status: 'paid', 
                     orderId: currentOrderId,
                     amount: amount
                  });
-            }, **10000**); // Задержка 10 секунд
+            }, 10000); // Задержка 10 секунд
         }
 
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
-                // Единое сообщение для обеих кнопок
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
                 document.getElementById('statusMessage').className = 'status paid';
                 
@@ -153,8 +150,6 @@
 
                 document.getElementById('qrCodeContainer').innerHTML = ''; 
                 document.getElementById('completeButton').style.display = 'block';
-                
-                // socket.emit('leave_order', currentOrderId); // Это можно убрать для симуляции в одном окне
             }
         });
     </script>
