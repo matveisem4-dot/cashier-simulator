@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Отцентрированный с градиентом Сбера) -->
+<!-- public/cashier.html (Отцентрированный с фоном Сбера) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,11 +6,10 @@
     <title>Sberbank Kassa Simulation</title>
     <style>
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Более современный шрифт */
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 0; 
             margin: 0;
-            /* Фирменный градиент Сбера */
-            background: linear-gradient(135deg, #00703C 0%, #00a851 100%); 
+            background-color: #00703C; /* Фирменный зеленый Сбера */
             display: flex;
             justify-content: center; /* Центрирует горизонтально */
             align-items: center; /* Центрирует вертикально */
@@ -18,15 +17,15 @@
             color: #333;
         }
         #terminal { 
-            border: none; /* Убрал лишнюю рамку */
+            border: none; 
             padding: 30px; 
             width: 400px; 
-            background-color: white; 
-            border-radius: 12px; /* Сделал углы более округлыми */
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4); /* Более выразительная тень */
+            background-color: white; /* Белый фон для самого блока, чтобы был контраст */
+            border-radius: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.4); 
             text-align: center;
         }
-        h1 { color: #00703C; margin-bottom: 20px; } /* Заголовок */
+        h1 { color: #00703C; margin-bottom: 20px; }
         .status { margin-top: 15px; font-weight: bold; padding: 10px; border-radius: 4px; }
         .pending { color: #FFA000; background-color: #FFFDE7; }
         .paid { color: #00703C; background-color: #E8F5E9; }
@@ -36,7 +35,7 @@
             border-radius: 6px; 
             border: 1px solid #ccc; 
             width: 100%; 
-            box-sizing: border-box; /* Важно для центрирования */
+            box-sizing: border-box;
         }
         button { 
             background-color: #00703C; 
