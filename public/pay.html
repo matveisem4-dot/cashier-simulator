@@ -40,10 +40,12 @@
             cursor: pointer;
             transition: background-color 0.3s;
             box-shadow: 0 4px 10px rgba(0, 112, 60, 0.3);
+            /* Кнопка изначально видна */
         }
         #payBtn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
         #payBtn:hover { background-color: #005f33; }
         #afterPaymentMessage { 
+            /* Это сообщение скрыто до нажатия кнопки */
             display: none; 
             color: #00703C; 
             font-weight: bold; 
@@ -60,6 +62,7 @@
 </head>
 <body>
     <div id="content">
+        <!-- Изначально показывается это сообщение -->
         <h1>Ожидание заказа</h1>
         <p id="loadingMessage">Пожалуйста, отсканируйте QR-код для начала оплаты.</p>
     </div>
@@ -85,6 +88,7 @@
 
         function updateUI(currentOrderId, currentAmount) {
             if (currentOrderId && currentAmount) {
+                // После получения данных от кассы, меняем интерфейс на этот:
                 contentDiv.innerHTML = `
                     <h1>Подтверждение оплаты</h1>
                     <p>Вы собираетесь оплатить заказ №<strong>${currentOrderId}</strong> на сумму <span class="amount-display">${currentAmount} ₽</span></p>
@@ -97,7 +101,7 @@
         function confirmPayment() {
             socket.emit('confirm_payment_simulation', { orderId: orderId, amount: amount });
             
-            // После оплаты скрываем кнопку и показываем сообщение об успехе
+            // Как только нажали кнопку, скрываем её и показываем сообщение
             const payBtn = document.getElementById('payBtn');
             const afterPaymentMessage = document.getElementById('afterPaymentMessage');
             if(payBtn) payBtn.style.display = 'none'; 
