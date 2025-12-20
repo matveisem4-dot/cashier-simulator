@@ -24,8 +24,6 @@ app.get('/api/generate-qr', (req, res) => {
     // Формируем ссылку для QR-кода, которая будет работать в интернете
     const paymentUrl = `${protocol}://${host}/pay.html?order_id=${orderId}&amount=${amount}`;
     
-    console.log(`🔗 Сгенерирована ссылка для оплаты: ${paymentUrl}`);
-    
     const svg = new QRCode(paymentUrl).svg();
     res.type('image/svg+xml').send(svg);
 });
@@ -33,10 +31,19 @@ app.get('/api/generate-qr', (req, res) => {
 io.on('connection', (socket) => {
     console.log(`📡 Новое соединение: ${socket.id}`);
 
-    // Касса подключается к каналу заказа
-    socket.on('join_cashier_order', (orderId) => {
-        socket.join(orderId);
-        console.log(`🛒 Касса подключилась к мониторингу заказа: ${orderId}`);
+    // Касса подключается к каналу конкретного заказа И присылает данные
+    socket.on('join_cashier_order', (data) => {
+        socket.join(data.orderId);
+        console.log(`🛒 Касса подключилась к мониторингу заказа: ${data.orderId}`);
+
+        // Генерируем полную ссылку для оплаты и выводим в терминал
+        const protocol = 'http'; // Используем http для localhost, хостинги сами переключат на https
+        const host = 'localhost:3000'; // Используем localhost:3000 для локального запуска
+        const paymentUrl = `${protocol}://${host}/pay.html?order_id=${data.orderId}&amount=${data.amount}`;
+        
+        console.log('--------------------------------------------------');
+        console.log(`🔗 ССЫЛКА ДЛЯ ОПЛАТЫ КЛИЕНТА: ${paymentUrl}`);
+        console.log('--------------------------------------------------');
     });
 
     // Клиент нажимает "Оплатить" на странице pay.html
@@ -53,7 +60,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        console.log(`❌ Соединение закрыто: ${socket.id}`);
+        // console.log(`❌ Соединение закрыто: ${socket.id}`);
     });
 });
 
@@ -62,6 +69,7 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log('=========================================');
     console.log(`🚀 СЕРВЕР КАССЫ ЗАПУЩЕН`);
+    console.log(`🔗 Адрес кассы: http://localhost:${PORT}/cashier.html`); // Ссылка для кассира
     console.log(`📡 Порт: ${PORT}`);
     console.log('=========================================');
 });
