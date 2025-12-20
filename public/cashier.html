@@ -1,19 +1,22 @@
-<!-- public/cashier.html (Обновленная версия) -->
+<!-- public/cashier.html (Стиль СберБанка) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <title>Sberbank Kassa Simulation</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        #terminal { border: 1px solid #ccc; padding: 20px; width: 400px; }
+        body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; /* Светло-серый фон */ }
+        #terminal { border: 1px solid #ccc; padding: 20px; width: 400px; background-color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .status { margin-top: 15px; font-weight: bold; }
         .pending { color: orange; }
-        .paid { color: green; }
-        input, button { padding: 10px; margin-top: 10px; }
+        .paid { color: #00703C; /* Фирменный зеленый Сбера */ }
+        input, button { padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; }
+        button { background-color: #00703C; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #005f33; }
+        #completeButton { background-color: #00703C; display: none; }
+        #completeButton:hover { background-color: #005f33; }
         #qrCodeContainer img { width: 200px; height: 200px; }
         #receipt { border-top: 1px dashed black; margin-top: 20px; padding-top: 10px; font-family: monospace; display: none; }
-        #completeButton { background: #007bff; color: white; border: none; cursor: pointer; display: none; }
     </style>
 </head>
 <body>
@@ -60,15 +63,11 @@
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
 
-            // 1. Присоединяемся к каналу этого заказа И отправляем сумму на сервер
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
-
-            // 2. Запрашиваем QR-код с сервера
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
 
-        // 3. Слушаем подтверждение оплаты от сервера (от клиента)
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
