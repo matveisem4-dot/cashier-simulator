@@ -1,15 +1,32 @@
-<!-- public/cashier.html (Стиль СберБанка) -->
+<!-- public/cashier.html (Центрирование и зеленый фон) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <title>Sberbank Kassa Simulation</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background-color: #f0f0f0; /* Светло-серый фон */ }
-        #terminal { border: 1px solid #ccc; padding: 20px; width: 400px; background-color: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body { 
+            font-family: sans-serif; 
+            padding: 0; 
+            margin: 0;
+            background-color: #00703C; /* Фирменный зеленый Сбера */
+            display: flex;
+            justify-content: center; /* Центрирует горизонтально */
+            align-items: center; /* Центрирует вертикально */
+            min-height: 100vh; /* Занимает всю высоту экрана */
+        }
+        #terminal { 
+            border: 1px solid #ccc; 
+            padding: 20px; 
+            width: 400px; 
+            background-color: white; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3); /* Более заметная тень на зеленом фоне */
+        }
+        h1 { color: #00703C; } /* Заголовок тоже делаем зеленым */
         .status { margin-top: 15px; font-weight: bold; }
         .pending { color: orange; }
-        .paid { color: #00703C; /* Фирменный зеленый Сбера */ }
+        .paid { color: #00703C; }
         input, button { padding: 10px; margin-top: 10px; border-radius: 4px; border: 1px solid #ccc; }
         button { background-color: #00703C; color: white; border: none; cursor: pointer; }
         button:hover { background-color: #005f33; }
@@ -20,8 +37,8 @@
     </style>
 </head>
 <body>
-    <h1>Симулятор POS-терминала</h1>
     <div id="terminal">
+        <h1>Симулятор POS-терминала</h1>
         <label>Сумма к оплате:</label><br>
         <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
         <button onclick="startPayment()">Принять оплату по QR</button>
@@ -41,6 +58,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
+        // ... (JavaScript код остается прежним) ...
         const socket = io();
         let currentOrderId = null;
 
