@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Мгновенная оплата по улыбке) -->
+<!-- public/cashier.html (Только оплата по QR) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -40,7 +40,6 @@
         .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; transition: background-color 0.3s; }
         .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
-        /* Убран стиль для #timerDisplay, так как он больше не нужен */
         input, .btn-group button { 
             padding: 15px; 
             margin-top: 15px; 
@@ -61,9 +60,7 @@
             margin-bottom: 0px;
         }
         .btn-group button:hover { background-color: #005f33; transform: translateY(-2px); }
-        #smilePayButton { background-color: #00A851; }
-        #smilePayButton:hover { background-color: #009345; }
-        #completeButton { background-color: #00703C; display: none; }
+        #completeButton { background-color: #00703C; }
         #completeButton:hover { background-color: #005f33; }
         #qrCodeContainer img { 
             width: 250px; 
@@ -84,12 +81,11 @@
         <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
         
         <div class="btn-group">
+            <!-- Оставлена только кнопка QR-кода -->
             <button onclick="startPayment()">Принять оплату по QR</button>
-            <button id="smilePayButton" onclick="simulateSmilePay()">Оплата по улыбке</button>
         </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
-        <div id="timerDisplay" style="display: none;"></div> <!-- Элемент скрыт -->
         
         <div id="qrCodeContainer">
             <!-- QR-код появится здесь -->
@@ -112,7 +108,6 @@
             document.getElementById('statusMessage').innerText = 'Ожидание операции...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = ''; 
-            // Убрана логика таймера
             currentOrderId = null;
         }
 
@@ -130,22 +125,9 @@
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
-        
-        function simulateSmilePay() {
-            const amount = document.getElementById('amountInput').value;
-            if (!amount) return alert('Введите сумму!');
-            
-            // Сразу вызываем событие успешной оплаты
-            socket.emit('payment_status_update', { 
-                status: 'paid', 
-                orderId: 'SMILE-' + Date.now(), // Генерируем новый ID
-                amount: amount
-            });
-        }
 
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
-                // Это сработает как для QR-кода, так и для оплаты по улыбке
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
                 document.getElementById('statusMessage').className = 'status paid';
                 
