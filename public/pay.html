@@ -53,7 +53,6 @@
         function confirmPayment() {
             socket.emit('confirm_payment_simulation', { orderId: orderId, amount: amount });
             
-            // После оплаты обновляем UI без перезагрузки страницы
             if(document.getElementById('payBtn')) document.getElementById('payBtn').style.display = 'none'; 
             if(document.getElementById('disclaimer')) document.getElementById('disclaimer').style.display = 'none'; 
             if(document.getElementById('afterPaymentMessage')) document.getElementById('afterPaymentMessage').style.display = 'block'; 
