@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Синхронизированный таймер) -->
+<!-- public/cashier.html (Сообщение об успешной оплате после таймера) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,10 +6,10 @@
     <title>Sberbank Kassa Simulation</title>
     <style>
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
             padding: 0; 
             margin: 0;
-            background: linear-gradient(135deg, #004d2a 0%, #00703C 50%, #00a851 100%); 
+            background: linear-gradient(135deg, #004d2a 0%, #00703C 60%, #00a851 100%); 
             display: flex;
             justify-content: center;
             align-items: center;
@@ -19,27 +19,37 @@
         #terminal { 
             border: none; 
             padding: 40px; 
-            width: 450px; 
+            width: 480px; 
             background-color: white; 
-            border-radius: 15px; 
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
             text-align: center;
             opacity: 0.98;
+            transition: transform 0.3s ease-in-out;
+        }
+        #terminal:hover {
+            transform: translateY(-5px); 
         }
         h1 { 
             color: #00703C; 
             margin-bottom: 25px;
-            border-bottom: 2px solid #eee; 
-            padding-bottom: 10px;
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 15px;
+            font-weight: 400;
         }
-        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 6px; font-size: 1.1em; }
+        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; transition: background-color 0.3s; }
         .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
         #timerDisplay { 
-            font-size: 3em; 
+            font-size: 4em; 
             color: #00703C; 
-            margin-top: 15px;
+            margin-top: 20px;
             display: none; 
+            animation: pulse 1s infinite alternate; 
+        }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.1); }
         }
         input, .btn-group button { 
             padding: 15px; 
@@ -57,15 +67,23 @@
             cursor: pointer; 
             font-size: 1.1em;
             font-weight: bold;
-            transition: background-color 0.3s; 
+            transition: background-color 0.3s, transform 0.1s; 
             margin-bottom: 0px;
         }
-        .btn-group button:hover { background-color: #005f33; }
+        .btn-group button:hover { background-color: #005f33; transform: translateY(-2px); }
         #smilePayButton { background-color: #00A851; }
         #smilePayButton:hover { background-color: #009345; }
         #completeButton { background-color: #00703C; display: none; }
         #completeButton:hover { background-color: #005f33; }
-        #qrCodeContainer img { width: 250px; height: 250px; margin-top: 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        #qrCodeContainer img { 
+            width: 250px; 
+            height: 250px; 
+            margin-top: 25px; 
+            border-radius: 8px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease-in-out;
+        }
+        #qrCodeContainer img:hover { transform: scale(1.05); }
         #receipt { border-top: 2px dashed #ddd; margin-top: 30px; padding-top: 20px; font-family: monospace; display: none; text-align: left; }
     </style>
 </head>
@@ -97,7 +115,7 @@
     <script>
         const socket = io();
         let currentOrderId = null;
-        let timerInterval = null; // Переменная для хранения ID интервала
+        let timerInterval = null;
 
         function completePurchase() {
             document.getElementById('receipt').style.display = 'none';
@@ -106,7 +124,7 @@
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = ''; 
             document.getElementById('timerDisplay').style.display = 'none';
-            if (timerInterval) clearInterval(timerInterval); // Останавливаем таймер при сбросе
+            if (timerInterval) clearInterval(timerInterval);
             currentOrderId = null;
         }
 
@@ -140,16 +158,14 @@
             let timeLeft = 10;
             document.getElementById('timerDisplay').innerText = timeLeft;
             
-            // Запускаем интервал и сохраняем его ID
             timerInterval = setInterval(() => {
                 timeLeft -= 1;
                 document.getElementById('timerDisplay').innerText = timeLeft;
                 if (timeLeft <= 0) {
-                    clearInterval(timerInterval); // Останавливаем интервал, когда 0
+                    clearInterval(timerInterval); 
                 }
             }, 1000);
 
-            // Вызываем оплату РОВНО через 10 секунд
             setTimeout(() => {
                  socket.emit('payment_status_update', { 
                     status: 'paid', 
@@ -161,18 +177,21 @@
 
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
-                if (timerInterval) clearInterval(timerInterval); // Останавливаем таймер, если он еще идет
+                if (timerInterval) clearInterval(timerInterval); 
                 
+                // *** Сообщение об успешной оплате ***
+                alert(`✅ Оплата на сумму ${data.amount} ₽ прошла успешно!`);
+
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
                 document.getElementById('statusMessage').className = 'status paid';
                 
-                document.getElementById('receiptOrderId').innerText = currentOrderId;
+                document.getElementById('receiptOrderId').innerText = data.orderId;
                 document.getElementById('receiptAmount').innerText = data.amount;
                 document.getElementById('receipt').style.display = 'block';
 
                 document.getElementById('qrCodeContainer').innerHTML = ''; 
                 document.getElementById('completeButton').style.display = 'block';
-                document.getElementById('timerDisplay').style.display = 'none'; // Скрываем таймер после успеха
+                document.getElementById('timerDisplay').style.display = 'none'; 
             }
         });
     </script>
