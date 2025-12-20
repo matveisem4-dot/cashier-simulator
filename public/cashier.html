@@ -1,4 +1,4 @@
-<!-- public/cashier.html (С таймером обратного отсчета 10 секунд) -->
+<!-- public/cashier.html (Синхронизированный таймер) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -39,7 +39,7 @@
             font-size: 3em; 
             color: #00703C; 
             margin-top: 15px;
-            display: none; /* Скрыт по умолчанию */
+            display: none; 
         }
         input, .btn-group button { 
             padding: 15px; 
@@ -81,7 +81,7 @@
         </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
-        <div id="timerDisplay">10</div> <!-- Элемент для вывода таймера -->
+        <div id="timerDisplay">10</div> 
         
         <div id="qrCodeContainer">
             <!-- QR-код появится здесь -->
@@ -97,6 +97,7 @@
     <script>
         const socket = io();
         let currentOrderId = null;
+        let timerInterval = null; // Переменная для хранения ID интервала
 
         function completePurchase() {
             document.getElementById('receipt').style.display = 'none';
@@ -104,7 +105,8 @@
             document.getElementById('statusMessage').innerText = 'Ожидание операции...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = ''; 
-            document.getElementById('timerDisplay').style.display = 'none'; // Скрываем таймер
+            document.getElementById('timerDisplay').style.display = 'none';
+            if (timerInterval) clearInterval(timerInterval); // Останавливаем таймер при сбросе
             currentOrderId = null;
         }
 
@@ -117,7 +119,7 @@
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
-            document.getElementById('timerDisplay').style.display = 'none'; // Скрываем таймер
+            document.getElementById('timerDisplay').style.display = 'none';
 
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
@@ -131,32 +133,36 @@
             completePurchase(); 
 
             currentOrderId = 'SMILE-' + Date.now(); 
-            document.getElementById('statusMessage').innerText = 'Распознавание лица...';
-            document.getElementById('timerDisplay').style.display = 'block'; // Показываем таймер
+            document.getElementById('statusMessage').innerText = 'Идет распознавание улыбки...';
+            document.getElementById('timerDisplay').style.display = 'block';
             document.getElementById('qrCodeContainer').innerHTML = '';
 
             let timeLeft = 10;
             document.getElementById('timerDisplay').innerText = timeLeft;
-
-            const timerInterval = setInterval(() => {
+            
+            // Запускаем интервал и сохраняем его ID
+            timerInterval = setInterval(() => {
                 timeLeft -= 1;
                 document.getElementById('timerDisplay').innerText = timeLeft;
                 if (timeLeft <= 0) {
-                    clearInterval(timerInterval);
+                    clearInterval(timerInterval); // Останавливаем интервал, когда 0
                 }
             }, 1000);
 
+            // Вызываем оплату РОВНО через 10 секунд
             setTimeout(() => {
                  socket.emit('payment_status_update', { 
                     status: 'paid', 
                     orderId: currentOrderId,
                     amount: amount
                  });
-            }, 10000); // Задержка 10 секунд
+            }, 10000); 
         }
 
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
+                if (timerInterval) clearInterval(timerInterval); // Останавливаем таймер, если он еще идет
+                
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
                 document.getElementById('statusMessage').className = 'status paid';
                 
