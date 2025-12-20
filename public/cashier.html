@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Отцентрированный с фоном Сбера) -->
+<!-- public/cashier.html (Красивый градиент Сбера) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -9,52 +9,39 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 0; 
             margin: 0;
-            background-color: #00703C; /* Фирменный зеленый Сбера */
+            background: linear-gradient(135deg, #004d2a 0%, #00703C 50%, #00a851 100%); 
             display: flex;
-            justify-content: center; /* Центрирует горизонтально */
-            align-items: center; /* Центрирует вертикально */
-            min-height: 100vh; /* Занимает всю высоту экрана */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             color: #333;
         }
         #terminal { 
             border: none; 
-            padding: 30px; 
-            width: 400px; 
-            background-color: white; /* Белый фон для самого блока, чтобы был контраст */
-            border-radius: 12px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.4); 
+            padding: 40px; 
+            width: 450px; 
+            background-color: white; 
+            border-radius: 15px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5); 
             text-align: center;
+            opacity: 0.98;
         }
-        h1 { color: #00703C; margin-bottom: 20px; }
-        .status { margin-top: 15px; font-weight: bold; padding: 10px; border-radius: 4px; }
-        .pending { color: #FFA000; background-color: #FFFDE7; }
+        h1 { 
+            color: #00703C; 
+            margin-bottom: 25px;
+            border-bottom: 2px solid #eee; 
+            padding-bottom: 10px;
+        }
+        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 6px; font-size: 1.1em; }
+        .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
-        input, button { 
-            padding: 12px; 
-            margin-top: 15px; 
-            border-radius: 6px; 
-            border: 1px solid #ccc; 
-            width: 100%; 
-            box-sizing: border-box;
-        }
-        button { 
-            background-color: #00703C; 
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            font-size: 16px;
-            font-weight: bold;
-        }
+        input, button { padding: 15px; margin-top: 15px; border-radius: 8px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; font-size: 1em; }
+        button { background-color: #00703C; color: white; border: none; cursor: pointer; font-size: 1.1em; font-weight: bold; transition: background-color 0.3s; }
         button:hover { background-color: #005f33; }
         #completeButton { background-color: #00703C; display: none; }
         #completeButton:hover { background-color: #005f33; }
-        #qrCodeContainer img { 
-            width: 200px; 
-            height: 200px; 
-            margin-top: 20px;
-            border-radius: 8px;
-        }
-        #receipt { border-top: 2px dashed #eee; margin-top: 20px; padding-top: 20px; font-family: monospace; display: none; text-align: left; }
+        #qrCodeContainer img { width: 250px; height: 250px; margin-top: 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        #receipt { border-top: 2px dashed #ddd; margin-top: 30px; padding-top: 20px; font-family: monospace; display: none; text-align: left; }
     </style>
 </head>
 <body>
@@ -76,8 +63,8 @@
             <p style="text-align: center;">--- Чек ---<br>ООО "Симулятор Кассы"<br>Чек №<span id="receiptOrderId"></span><br>ИТОГ: <span id="receiptAmount"></span> ₽</p>
         </div>
     </div>
-
     <script src="/socket.io/socket.io.js"></script>
+    <!-- Остальной JS код из вашего файла cashier.html -->
     <script>
         const socket = io();
         let currentOrderId = null;
@@ -102,6 +89,7 @@
             document.getElementById('completeButton').style.display = 'none'; 
 
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
+            // Эта строка теперь будет работать, потому что сервер Node.js обрабатывает этот API
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
