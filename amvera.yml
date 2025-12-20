@@ -1,0 +1,9 @@
+meta:
+  environment: nodejs
+  toolchain:
+    name: npm
+    version: 20
+build:
+  install: npm install
+run:
+  script: node server.js
