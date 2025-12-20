@@ -12,22 +12,28 @@ const io = new Server(server);
 // Обслуживаем статические файлы из папки 'public'
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API для генерации QR-кода
+// API для генерации QR-кода с автоматическим определением адреса хостинга
 app.get('/api/generate-qr', (req, res) => {
     const orderId = req.query.orderId;
     const amount = req.query.amount;
     
-    // Ссылка, которую клиент откроет при сканировании QR
-    const paymentUrl = `http://localhost:3000/pay.html?order_id=${orderId}&amount=${amount}`;
+    // Определяем протокол (http или https) и адрес сайта автоматически
+    const protocol = req.headers['x-forwarded-proto'] || 'http';
+    const host = req.get('host');
+    
+    // Формируем ссылку для QR-кода, которая будет работать в интернете
+    const paymentUrl = `${protocol}://${host}/pay.html?order_id=${orderId}&amount=${amount}`;
+    
+    console.log(`🔗 Сгенерирована ссылка для оплаты: ${paymentUrl}`);
     
     const svg = new QRCode(paymentUrl).svg();
     res.type('image/svg+xml').send(svg);
 });
 
 io.on('connection', (socket) => {
-    console.log(`📡 Новое подключение: ${socket.id}`);
+    console.log(`📡 Новое соединение: ${socket.id}`);
 
-    // Касса подключается к каналу конкретного заказа
+    // Касса подключается к каналу заказа
     socket.on('join_cashier_order', (orderId) => {
         socket.join(orderId);
         console.log(`🛒 Касса подключилась к мониторингу заказа: ${orderId}`);
@@ -35,15 +41,14 @@ io.on('connection', (socket) => {
 
     // Клиент нажимает "Оплатить" на странице pay.html
     socket.on('confirm_payment_simulation', (data) => {
-        console.log(`💰 Получено подтверждение оплаты заказа ${data.orderId} на сумму ${data.amount}`);
+        console.log(`💰 Оплата получена для заказа: ${data.orderId}`);
 
-        // ПЕРЕДАЕМ ДАННЫЕ ОБРАТНО В КАССУ
-        // Мы отправляем статус, сумму И orderId (чтобы cashier.html понял, что это его заказ)
+        // Отправляем сигнал об успехе в комнату заказа (кассиру)
         io.to(data.orderId).emit('payment_status_update', { 
             status: 'paid', 
-            orderId: data.orderId, 
+            orderId: data.orderId,
             amount: data.amount,
-            message: 'Оплата прошла успешно!'
+            message: 'Транзакция успешно завершена!'
         });
     });
 
@@ -52,10 +57,11 @@ io.on('connection', (socket) => {
     });
 });
 
+// Используем порт, который выдает хостинг (важно для Render/Amvera)
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log('=========================================');
     console.log(`🚀 СЕРВЕР КАССЫ ЗАПУЩЕН`);
-    console.log(`🔗 Адрес кассы: http://localhost:${PORT}/cashier.html`);
+    console.log(`📡 Порт: ${PORT}`);
     console.log('=========================================');
 });
