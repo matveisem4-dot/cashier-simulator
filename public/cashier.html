@@ -1,4 +1,4 @@
-<!-- public/cashier.html (С всплывающим окном при оплате по улыбке) -->
+<!-- public/cashier.html (Исправленный код с оплатой по улыбке и всплывающим окном) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -115,6 +115,7 @@
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
         
+        // Эта функция должна быть определена до того, как вы ее вызовете в onclick
         function simulateSmilePay() {
             const amount = document.getElementById('amountInput').value;
             if (!amount) return alert('Введите сумму!');
@@ -123,7 +124,6 @@
 
             currentOrderId = 'SMILE-' + Date.now(); 
 
-            // *** Добавление всплывающего окна (alert) ***
             alert('Выполняется оплата по улыбке. Пожалуйста, подождите 10 секунд...');
 
             document.getElementById('statusMessage').innerText = 'Идет распознавание улыбки и списание средств (10 сек)...';
