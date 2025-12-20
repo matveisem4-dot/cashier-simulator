@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Финальный код с оплатой по улыбке) -->
+<!-- public/cashier.html (Финальный код с оплатой по улыбке и задержкой 10 секунд) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -118,21 +118,27 @@
         function simulateSmilePay() {
             const amount = document.getElementById('amountInput').value;
             if (!amount) return alert('Введите сумму!');
+            
+            // Сбрасываем предыдущее состояние
+            completePurchase(); 
 
             currentOrderId = 'SMILE-' + Date.now(); 
 
-            document.getElementById('statusMessage').innerText = 'Имитация оплаты по улыбке...';
+            document.getElementById('statusMessage').innerText = 'Идет распознавание улыбки и списание средств (10 сек)...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = '';
 
-            // Имитируем успешный ответ сервера через 2 секунды
+            // Имитируем успешный ответ сервера через 10 секунд (10000ms)
             setTimeout(() => {
+                 // Отправляем сигнал об успехе в комнату заказа (кассиру)
+                 // В данном случае, так как это симуляция в одном окне, 
+                 // socket.emit вызовет обработчик socket.on ниже.
                  socket.emit('payment_status_update', { 
                     status: 'paid', 
                     orderId: currentOrderId,
                     amount: amount
                  });
-            }, 2000); 
+            }, **10000**); // Задержка 10 секунд
         }
 
         socket.on('payment_status_update', (data) => {
@@ -148,7 +154,7 @@
                 document.getElementById('qrCodeContainer').innerHTML = ''; 
                 document.getElementById('completeButton').style.display = 'block';
                 
-                socket.emit('leave_order', currentOrderId);
+                // socket.emit('leave_order', currentOrderId); // Это можно убрать для симуляции в одном окне
             }
         });
     </script>
