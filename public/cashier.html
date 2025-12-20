@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Исправленный код с оплатой по улыбке и всплывающим окном) -->
+<!-- public/cashier.html (С таймером обратного отсчета 10 секунд) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -35,6 +35,12 @@
         .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 6px; font-size: 1.1em; }
         .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
+        #timerDisplay { 
+            font-size: 3em; 
+            color: #00703C; 
+            margin-top: 15px;
+            display: none; /* Скрыт по умолчанию */
+        }
         input, .btn-group button { 
             padding: 15px; 
             margin-top: 15px; 
@@ -75,6 +81,7 @@
         </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
+        <div id="timerDisplay">10</div> <!-- Элемент для вывода таймера -->
         
         <div id="qrCodeContainer">
             <!-- QR-код появится здесь -->
@@ -97,6 +104,7 @@
             document.getElementById('statusMessage').innerText = 'Ожидание операции...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('qrCodeContainer').innerHTML = ''; 
+            document.getElementById('timerDisplay').style.display = 'none'; // Скрываем таймер
             currentOrderId = null;
         }
 
@@ -109,13 +117,13 @@
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
+            document.getElementById('timerDisplay').style.display = 'none'; // Скрываем таймер
 
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
         
-        // Эта функция должна быть определена до того, как вы ее вызовете в onclick
         function simulateSmilePay() {
             const amount = document.getElementById('amountInput').value;
             if (!amount) return alert('Введите сумму!');
@@ -123,12 +131,20 @@
             completePurchase(); 
 
             currentOrderId = 'SMILE-' + Date.now(); 
-
-            alert('Выполняется оплата по улыбке. Пожалуйста, подождите 10 секунд...');
-
-            document.getElementById('statusMessage').innerText = 'Идет распознавание улыбки и списание средств (10 сек)...';
-            document.getElementById('statusMessage').className = 'status pending';
+            document.getElementById('statusMessage').innerText = 'Распознавание лица...';
+            document.getElementById('timerDisplay').style.display = 'block'; // Показываем таймер
             document.getElementById('qrCodeContainer').innerHTML = '';
+
+            let timeLeft = 10;
+            document.getElementById('timerDisplay').innerText = timeLeft;
+
+            const timerInterval = setInterval(() => {
+                timeLeft -= 1;
+                document.getElementById('timerDisplay').innerText = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                }
+            }, 1000);
 
             setTimeout(() => {
                  socket.emit('payment_status_update', { 
@@ -150,6 +166,7 @@
 
                 document.getElementById('qrCodeContainer').innerHTML = ''; 
                 document.getElementById('completeButton').style.display = 'block';
+                document.getElementById('timerDisplay').style.display = 'none'; // Скрываем таймер после успеха
             }
         });
     </script>
