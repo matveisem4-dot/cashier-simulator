@@ -1,153 +1,110 @@
-<!-- public/cashier.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sberbank Kassa Simulation</title>
+    <title>Sberbank Kassa Simulation 2025</title>
     <style>
         body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            padding: 0; 
-            margin: 0;
-            background: linear-gradient(135deg, #004d2a 0%, #00703C 60%, #00a851 100%); 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: #333;
+            font-family: 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #004d2a 0%, #00a851 100%); 
+            display: flex; justify-content: center; align-items: center; 
+            min-height: 100vh; margin: 0; 
         }
         #terminal { 
-            border: none; 
-            padding: 40px; 
-            width: 480px; 
-            background-color: white; 
-            border-radius: 20px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
-            text-align: center;
-            opacity: 0.98;
-            transition: transform 0.3s ease-in-out;
+            padding: 40px; width: 400px; background: white; 
+            border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); text-align: center; 
         }
-        #terminal:hover {
-            transform: translateY(-5px); 
+        h1 { color: #00703C; font-size: 1.5em; margin-bottom: 20px; }
+        input { 
+            width: 100%; padding: 12px; margin-bottom: 20px; 
+            border: 1px solid #ccc; border-radius: 8px; box-sizing: border-box; font-size: 1.2em;
         }
-        h1 { 
-            color: #00703C; 
-            margin-bottom: 25px;
-            border-bottom: 1px solid #eee; 
-            padding-bottom: 15px;
-            font-weight: 400;
+        .btn-pay { 
+            background-color: #00703C; color: white; border: none; 
+            padding: 15px; width: 100%; border-radius: 8px; 
+            font-size: 1.1em; font-weight: bold; cursor: pointer; transition: 0.3s;
         }
-        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; transition: background-color 0.3s; }
-        .pending { color: #D39E00; background-color: #FFF8E1; }
-        .paid { color: #00703C; background-color: #E8F5E9; }
-        input, .btn-group button { 
-            padding: 15px; 
-            margin-top: 15px; 
-            border-radius: 8px; 
-            border: 1px solid #ccc; 
-            width: 100%; 
-            box-sizing: border-box; 
-            font-size: 1em;
-        }
-        .btn-group button {
-            background-color: #00703C; 
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            font-size: 1.1em;
-            font-weight: bold;
-            transition: background-color 0.3s, transform 0.1s; 
-            margin-bottom: 10px;
-        }
-        .btn-group button:hover { background-color: #005f33; transform: translateY(-2px); }
-        
-        #completeButton { background-color: #00703C; display: none; }
-        #completeButton:hover { background-color: #005f33; }
-
+        .btn-pay:hover { background-color: #005f33; }
+        .status { margin-top: 20px; padding: 10px; border-radius: 8px; font-weight: bold; }
+        .pending { color: #856404; background-color: #fff3cd; }
+        .paid { color: #155724; background-color: #d4edda; }
         #qrCodeContainer img { 
-            width: 250px; 
-            height: 250px; 
-            margin-top: 25px; 
-            border-radius: 8px; 
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            transition: transform 0.3s ease-in-out;
+            margin-top: 20px; width: 200px; height: 200px; border: 1px solid #eee; padding: 10px; border-radius: 10px;
         }
-        #qrCodeContainer img:hover { transform: scale(1.05); }
-        #receipt { border-top: 2px dashed #ddd; margin-top: 30px; padding-top: 20px; font-family: monospace; display: none; text-align: left; }
+        #completeButton { 
+            margin-top: 20px; display: none; background: #222; color: white; border: none; 
+            padding: 10px; width: 100%; border-radius: 8px; cursor: pointer;
+        }
     </style>
 </head>
 <body>
-    <div id="terminal">
-        <h1>Симулятор POS-терминала</h1>
-        <label for="amountInput" style="display: block; text-align: left; margin-bottom: 5px;">Сумма к оплате:</label>
-        <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
+
+<div id="terminal">
+    <h1>POS-Терминал</h1>
+    <input type="number" id="amountInput" value="1500.00">
+    
+    <button class="btn-pay" onclick="startPayment()">Сгенерировать QR для оплаты</button>
+    
+    <div id="statusMessage" class="status" style="display:none;"></div>
+    
+    <div id="qrCodeContainer"></div>
+
+    <button id="completeButton" onclick="location.reload()">Новая продажа</button>
+</div>
+
+<!-- Подключаем Socket.io -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = typeof io !== 'undefined' ? io() : null;
+    let currentOrderId = null;
+
+    function startPayment() {
+        const amount = document.getElementById('amountInput').value;
+        if (!amount) return alert('Введите сумму');
+
+        currentOrderId = 'ORD-' + Math.floor(Math.random() * 1000000);
         
-        <div class="btn-group">
-            <!-- Оставлена только оплата по QR -->
-            <button onclick="startPayment()">Принять оплату по QR</button>
-        </div>
+        // 1. Показываем статус
+        const statusBox = document.getElementById('statusMessage');
+        statusBox.style.display = 'block';
+        statusBox.innerText = 'Ожидание сканирования...';
+        statusBox.className = 'status pending';
+
+        // 2. Генерируем QR через Google API (работает без бэкенда)
+        // В chl передаем данные, которые должен считать телефон (например, ссылка на оплату)
+        const paymentData = `sberbank.ru{currentOrderId}?amount=${amount}`;
+        const qrUrl = `api.qrserver.com{encodeURIComponent(paymentData)}`;
         
-        <div class="status pending" id="statusMessage">Ожидание операции...</div>
-        
-        <div id="qrCodeContainer">
-            <!-- QR-код появится здесь при нажатии кнопки -->
-        </div>
+        document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR">`;
 
-        <button id="completeButton" onclick="completePurchase()">Завершить покупку</button>
-
-        <div id="receipt">
-            <p style="text-align: center;">--- Чек ---<br>ООО "Симулятор Кассы"<br>Чек №<span id="receiptOrderId"></span><br>ИТОГ: <span id="receiptAmount"></span> ₽</p>
-        </div>
-    </div>
-
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        let currentOrderId = null;
-
-        function completePurchase() {
-            document.getElementById('receipt').style.display = 'none';
-            document.getElementById('completeButton').style.display = 'none';
-            document.getElementById('statusMessage').innerText = 'Ожидание операции...';
-            document.getElementById('statusMessage').className = 'status pending';
-            document.getElementById('qrCodeContainer').innerHTML = ''; 
-            currentOrderId = null;
-        }
-
-        function startPayment() {
-            const amount = document.getElementById('amountInput').value;
-            if (!amount) return alert('Введите сумму!');
-
-            currentOrderId = 'ORD-' + Date.now();
-            
-            // Обновляем статус
-            document.getElementById('statusMessage').innerText = 'Сканируйте QR-код для оплаты...';
-            document.getElementById('statusMessage').className = 'status pending';
-            document.getElementById('receipt').style.display = 'none';
-            document.getElementById('completeButton').style.display = 'none'; 
-            
-            // Оповещаем сервер о начале сессии оплаты
+        // 3. Отправляем инфо на сервер через сокеты
+        if (socket) {
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
-
-            // Генерируем QR-код (спавним картинку)
-            const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
-            document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
 
-        // Слушаем подтверждение оплаты от сервера
+        // ДЛЯ ТЕСТА: имитируем успешную оплату через 5 секунд
+        setTimeout(() => {
+            handleSuccess(currentOrderId, amount);
+        }, 5000);
+    }
+
+    function handleSuccess(orderId, amount) {
+        const statusBox = document.getElementById('statusMessage');
+        statusBox.innerText = `✅ Оплачено: ${amount} ₽`;
+        statusBox.className = 'status paid';
+        
+        document.getElementById('qrCodeContainer').innerHTML = '';
+        document.getElementById('completeButton').style.display = 'block';
+    }
+
+    if (socket) {
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
-                document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
-                document.getElementById('statusMessage').className = 'status paid';
-                
-                document.getElementById('receiptOrderId').innerText = data.orderId;
-                document.getElementById('receiptAmount').innerText = data.amount;
-                document.getElementById('receipt').style.display = 'block';
-
-                document.getElementById('qrCodeContainer').innerHTML = ''; // Убираем QR после оплаты
-                document.getElementById('completeButton').style.display = 'block'; // Показываем кнопку завершения
+                handleSuccess(data.orderId, data.amount);
             }
         });
-    </script>
+    }
+</script>
+
 </body>
 </html>
