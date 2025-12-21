@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Панель Управления Оплатой</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        h1 { color: #333; font-size: 1.2em; }
+        input, button { padding: 12px; margin-top: 10px; border-radius: 5px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; }
+        button { background: #00703C; color: white; border: none; cursor: pointer; font-weight: bold; }
+        .status { margin-top: 15px; padding: 10px; border-radius: 5px; background: #d4edda; color: #155724; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Панель Управления</h1>
+    <p>Введите ID терминала или перейдите по ссылке из QR-кода:</p>
+    <input type="text" id="terminalIdInput" placeholder="ID Терминала (напр. T12345)">
+    <input type="text" id="orderIdInput" placeholder="ID Заказа (необязательно)">
+    <input type="number" id="amountInput" placeholder="Сумма" value="0.00">
+    <button onclick="sendPaymentSignal()">Подтвердить оплату</button>
+    <div id="status" class="status" style="display:none;"></div>
+</div>
+
+<script>
+    // Если открыли по ссылке из QR-кода, заполняем поля автоматически
+    window.onload = () => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('terminal')) {
+            document.getElementById('terminalIdInput').value = params.get('terminal');
+            document.getElementById('orderIdInput').value = params.get('order');
+            document.getElementById('amountInput').value = params.get('amount');
+        }
+    }
+
+    function sendPaymentSignal() {
+        const terminalId = document.getElementById('terminalIdInput').value;
+        const orderId = document.getElementById('orderIdInput').value;
+        const amount = document.getElementById('amountInput').value;
+
+        if (!terminalId || !amount) {
+            alert("Введите ID терминала и сумму.");
+            return;
+        }
+
+        const signal = {
+            terminalId: terminalId,
+            orderId: orderId,
+            amount: amount,
+            timestamp: Date.now()
+        };
+
+        // Отправляем сигнал через LocalStorage (работает между вкладками)
+        localStorage.setItem('payment_signal', JSON.stringify(signal));
+
+        document.getElementById('status').innerText = `Сигнал отправлен на терминал ${terminalId}.`;
+        document.getElementById('status').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
