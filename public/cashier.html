@@ -3,19 +3,76 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sberbank Kassa Simulation (Server Sync)</title>
+    <title>Sberbank Kassa Simulation</title>
     <style>
-        /* Оригинальный стиль сохранен */
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 0; margin: 0; background: linear-gradient(135deg, #004d2a 0%, #00703C 60%, #00a851 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #333; }
-        #terminal { border: none; padding: 40px; width: 480px; background-color: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: center; }
-        h1 { color: #00703C; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; font-weight: 400; }
-        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; }
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            padding: 0; 
+            margin: 0;
+            background: linear-gradient(135deg, #004d2a 0%, #00703C 60%, #00a851 100%); 
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        #terminal { 
+            border: none; 
+            padding: 40px; 
+            width: 480px; 
+            background-color: white; 
+            border-radius: 20px; 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4); 
+            text-align: center;
+            opacity: 0.98;
+            transition: transform 0.3s ease-in-out;
+        }
+        #terminal:hover {
+            transform: translateY(-5px); 
+        }
+        h1 { 
+            color: #00703C; 
+            margin-bottom: 25px;
+            border-bottom: 1px solid #eee; 
+            padding-bottom: 15px;
+            font-weight: 400;
+        }
+        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; transition: background-color 0.3s; }
         .pending { color: #D39E00; background-color: #FFF8E1; }
         .paid { color: #00703C; background-color: #E8F5E9; }
-        input, .btn-group button { padding: 15px; margin-top: 15px; border-radius: 8px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; font-size: 1em; }
-        .btn-group button { background-color: #00703C; color: white; border: none; cursor: pointer; font-weight: bold; }
-        #completeButton { background-color: #00703C; display: none; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; margin-top: 15px; cursor: pointer; }
-        #qrCodeContainer img { width: 250px; height: 250px; margin-top: 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        input, .btn-group button { 
+            padding: 15px; 
+            margin-top: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #ccc; 
+            width: 100%; 
+            box-sizing: border-box; 
+            font-size: 1em;
+        }
+        .btn-group button {
+            background-color: #00703C; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+            font-size: 1.1em;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s; 
+            margin-bottom: 0px;
+        }
+        .btn-group button:hover { background-color: #005f33; transform: translateY(-2px); }
+        
+        #completeButton { background-color: #00703C; display: none; }
+        #completeButton:hover { background-color: #005f33; }
+
+        #qrCodeContainer img { 
+            width: 250px; 
+            height: 250px; 
+            margin-top: 25px; 
+            border-radius: 8px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.3s ease-in-out;
+        }
+        #qrCodeContainer img:hover { transform: scale(1.05); }
         #receipt { border-top: 2px dashed #ddd; margin-top: 30px; padding-top: 20px; font-family: monospace; display: none; text-align: left; }
     </style>
 </head>
@@ -23,7 +80,7 @@
     <div id="terminal">
         <h1>Симулятор POS-терминала</h1>
         <label for="amountInput" style="display: block; text-align: left; margin-bottom: 5px;">Сумма к оплате:</label>
-        <input type="number" id="amountInput" value="1500.50" step="0.01">
+        <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
         
         <div class="btn-group">
             <button onclick="startPayment()">Принять оплату по QR</button>
@@ -43,9 +100,8 @@
     <!-- Загрузка socket.io из вашего сервера -->
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Это подключение теперь должно работать, так как сервер запущен
-        const socket = io(); 
-        let currentOrderId = null;
+        const socket = io();
+        let currentOrderId = null; // Переменная инициализирована корректно
 
         function completePurchase() {
             document.getElementById('receipt').style.display = 'none';
@@ -67,11 +123,10 @@
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
             
-            // --- СОБЫТИЕ, СОВПАДАЮЩЕЕ С СЕРВЕРОМ ---
-            // Ваш server.js ожидает: { orderId: 'string', amount: 'string' }
+            // Событие, которое ожидает ваш server.js
             socket.emit('join_cashier_order', { 
                 orderId: currentOrderId, 
-                amount: amount.toString() // Убеждаемся, что передаем строку
+                amount: amount.toString() 
             });
 
             // Генерируем QR-код через ваш серверный API
