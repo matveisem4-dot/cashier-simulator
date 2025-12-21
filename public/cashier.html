@@ -1,4 +1,4 @@
-<!-- public/cashier.html (Исправленный код без ошибки инициализации) -->
+<!-- public/cashier.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -57,13 +57,13 @@
             font-size: 1.1em;
             font-weight: bold;
             transition: background-color 0.3s, transform 0.1s; 
-            margin-bottom: 0px;
+            margin-bottom: 10px;
         }
         .btn-group button:hover { background-color: #005f33; transform: translateY(-2px); }
-        #smilePayButton { background-color: #00A851; }
-        #smilePayButton:hover { background-color: #009345; }
-        #completeButton { background-color: #00703C; }
+        
+        #completeButton { background-color: #00703C; display: none; }
         #completeButton:hover { background-color: #005f33; }
+
         #qrCodeContainer img { 
             width: 250px; 
             height: 250px; 
@@ -83,14 +83,14 @@
         <input type="number" id="amountInput" value="1500.50" step="0.01"><br>
         
         <div class="btn-group">
+            <!-- Оставлена только оплата по QR -->
             <button onclick="startPayment()">Принять оплату по QR</button>
-            <button id="smilePayButton" onclick="simulateSmilePay()">Оплата по улыбке</button>
         </div>
         
         <div class="status pending" id="statusMessage">Ожидание операции...</div>
         
         <div id="qrCodeContainer">
-            <!-- QR-код появится здесь -->
+            <!-- QR-код появится здесь при нажатии кнопки -->
         </div>
 
         <button id="completeButton" onclick="completePurchase()">Завершить покупку</button>
@@ -99,10 +99,11 @@
             <p style="text-align: center;">--- Чек ---<br>ООО "Симулятор Кассы"<br>Чек №<span id="receiptOrderId"></span><br>ИТОГ: <span id="receiptAmount"></span> ₽</p>
         </div>
     </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let currentOrderId = null; // Переменная инициализирована корректно
+        let currentOrderId = null;
 
         function completePurchase() {
             document.getElementById('receipt').style.display = 'none';
@@ -118,28 +119,22 @@
             if (!amount) return alert('Введите сумму!');
 
             currentOrderId = 'ORD-' + Date.now();
-            document.getElementById('statusMessage').innerText = 'Ожидание оплаты от клиента через QR...';
+            
+            // Обновляем статус
+            document.getElementById('statusMessage').innerText = 'Сканируйте QR-код для оплаты...';
             document.getElementById('statusMessage').className = 'status pending';
             document.getElementById('receipt').style.display = 'none';
             document.getElementById('completeButton').style.display = 'none'; 
             
+            // Оповещаем сервер о начале сессии оплаты
             socket.emit('join_cashier_order', { orderId: currentOrderId, amount: amount });
+
+            // Генерируем QR-код (спавним картинку)
             const qrUrl = `/api/generate-qr?orderId=${currentOrderId}&amount=${amount}`;
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
         }
-        
-        function simulateSmilePay() {
-            const amount = document.getElementById('amountInput').value;
-            if (!amount) return alert('Введите сумму!');
-            
-            // Сразу вызываем событие успешной оплаты
-            socket.emit('payment_status_update', { 
-                status: 'paid', 
-                orderId: 'SMILE-' + Date.now(), // Генерируем новый ID
-                amount: amount
-            });
-        }
 
+        // Слушаем подтверждение оплаты от сервера
         socket.on('payment_status_update', (data) => {
             if (data.orderId === currentOrderId && data.status === 'paid') {
                 document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО!';
@@ -149,8 +144,8 @@
                 document.getElementById('receiptAmount').innerText = data.amount;
                 document.getElementById('receipt').style.display = 'block';
 
-                document.getElementById('qrCodeContainer').innerHTML = ''; 
-                document.getElementById('completeButton').style.display = 'block';
+                document.getElementById('qrCodeContainer').innerHTML = ''; // Убираем QR после оплаты
+                document.getElementById('completeButton').style.display = 'block'; // Показываем кнопку завершения
             }
         });
     </script>
