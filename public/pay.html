@@ -1,112 +1,83 @@
-<!-- public/pay.html (Красивый дизайн Сбера для клиента) -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Оплата Сбербанк (Симулятор)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оплата заказа</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
-            padding: 0; 
-            margin: 0;
-            /* Фирменный градиент Сбера для фона */
-            background: linear-gradient(135deg, #004d2a 0%, #00703C 50%, #00a851 100%); 
-            display: flex;
-            justify-content: center; 
-            align-items: center; 
-            min-height: 100vh;
-            color: #333;
-        }
-        #content { 
-            background-color: white; 
-            padding: 40px; 
-            border-radius: 15px; /* Скругленные углы */
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* Глубокая тень */
-            max-width: 450px; 
-            margin: auto; 
-            text-align: center;
-            opacity: 0.98;
-        }
-        h1 { color: #00703C; margin-bottom: 20px; font-weight: 400; }
-        p { margin: 15px 0; }
-        .amount-display { font-size: 2em; margin: 20px 0; font-weight: bold; color: #00703C; }
-        #payBtn { 
-            padding: 15px 40px; 
-            background: #00703C; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 18px; 
-            cursor: pointer;
-            transition: background-color 0.3s;
-            box-shadow: 0 4px 10px rgba(0, 112, 60, 0.3);
-            /* Кнопка изначально видна */
-        }
-        #payBtn:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
-        #payBtn:hover { background-color: #005f33; }
-        #afterPaymentMessage { 
-            /* Это сообщение скрыто до нажатия кнопки */
-            display: none; 
-            color: #00703C; 
-            font-weight: bold; 
-            background-color: #E8F5E9; /* Светло-зеленый фон для сообщения */
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
-        #loadingMessage {
-            color: #555;
-            font-style: italic;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; display: flex; justify-content-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px; margin: auto; text-align: center; }
+        h1 { color: #21a038; font-size: 1.2em; }
+        .details { margin-bottom: 20px; font-size: 1.1em; }
+        .btn-pay { background: #21a038; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        .btn-pay:hover { background: #1a7a2c; }
+        .status { margin-top: 20px; padding: 10px; border-radius: 5px; font-weight: bold; }
+        .pending { background: #fff3cd; color: #856404; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
     </style>
 </head>
 <body>
-    <div id="content">
-        <!-- Изначально показывается это сообщение -->
-        <h1>Ожидание заказа</h1>
-        <p id="loadingMessage">Пожалуйста, отсканируйте QR-код для начала оплаты.</p>
+
+<div class="container">
+    <h1>Подтверждение оплаты</h1>
+    <div class="details">
+        Заказ №: <strong id="orderIdDisplay"></strong><br>
+        Сумма: <strong id="amountDisplay"></strong> ₽
     </div>
+    
+    <button class="btn-pay" onclick="confirmPayment()">Оплатить сейчас</button>
+    
+    <div id="status" class="status pending">Ожидание подтверждения...</div>
+</div>
 
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-        const socket = io();
-        const urlParams = new URLSearchParams(window.location.search);
-        let orderId = urlParams.get('order_id');
-        let amount = urlParams.get('amount');
-        const contentDiv = document.getElementById('content');
+<!-- Подключаем Socket.io с сервера -->
+<script src="/socket.io/socket.io.js"></script>
+<script>
+    const socket = io();
+    
+    // Функция для получения параметров из URL (order_id, amount)
+    function getUrlParams() {
+        const params = {};
+        window.location.search.substring(1).split('&').forEach(function(part) {
+            const pair = part.split('=');
+            params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
+        });
+        return params;
+    }
 
-        if (orderId) {
-            socket.emit('client_join_order', orderId);
-            updateUI(orderId, amount);
-        }
+    const params = getUrlParams();
+    const orderId = params['order_id'];
+    const amount = params['amount'];
 
-        socket.on('new_order_ready', (data) => {
-            orderId = data.orderId;
-            amount = data.amount;
-            updateUI(orderId, amount);
+    if (orderId && amount) {
+        document.getElementById('orderIdDisplay').innerText = orderId;
+        document.getElementById('amountDisplay').innerText = amount;
+        
+        // Как только клиент загрузил страницу, он "присоединяется" к заказу
+        socket.on('connect', () => {
+             // Сообщаем серверу, что клиент на странице этого заказа
+             socket.emit('client_join_order', orderId); 
         });
 
-        function updateUI(currentOrderId, currentAmount) {
-            if (currentOrderId && currentAmount) {
-                // После получения данных от кассы, меняем интерфейс на этот:
-                contentDiv.innerHTML = `
-                    <h1>Подтверждение оплаты</h1>
-                    <p>Вы собираетесь оплатить заказ №<strong>${currentOrderId}</strong> на сумму <span class="amount-display">${currentAmount} ₽</span></p>
-                    <button id="payBtn" onclick="confirmPayment()">Подтвердить оплату</button>
-                    <p id="afterPaymentMessage">Статус оплаты передан в кассу ✅</p>
-                `;
-            }
-        }
+    } else {
+        document.querySelector('.container').innerHTML = '<div class="status error">Неверные параметры заказа.</div>';
+    }
 
-        function confirmPayment() {
-            socket.emit('confirm_payment_simulation', { orderId: orderId, amount: amount });
-            
-            // Как только нажали кнопку, скрываем её и показываем сообщение
-            const payBtn = document.getElementById('payBtn');
-            const afterPaymentMessage = document.getElementById('afterPaymentMessage');
-            if(payBtn) payBtn.style.display = 'none'; 
-            if(afterPaymentMessage) afterPaymentMessage.style.display = 'block'; 
+    // Функция подтверждения оплаты (по нажатию кнопки)
+    function confirmPayment() {
+        if (orderId && amount) {
+            // Отправляем серверу сигнал, что оплата совершена
+            socket.emit('confirm_payment_simulation', { 
+                orderId: orderId, 
+                amount: amount 
+            });
+            document.getElementById('status').className = 'status success';
+            document.getElementById('status').innerText = '✅ Оплата прошла успешно!';
+            document.querySelector('.btn-pay').style.display = 'none';
         }
-    </script>
+    }
+</script>
+
 </body>
 </html>
