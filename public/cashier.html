@@ -2,92 +2,54 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Sberbank Kassa Simulation</title>
+    <title>POS-терминал (СБП)</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* Оригинальный стиль сохранен */
-        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 0; margin: 0; background: linear-gradient(135deg, #004d2a 0%, #00703C 60%, #00a851 100%); display: flex; justify-content: center; align-items: center; min-height: 100vh; color: #333; }
-        #terminal { border: none; padding: 40px; width: 480px; background-color: white; border-radius: 20px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); text-align: center; }
-        h1 { color: #00703C; margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px; font-weight: 400; }
-        .status { margin-top: 20px; font-weight: bold; padding: 12px; border-radius: 8px; font-size: 1.1em; }
-        .pending { color: #D39E00; background-color: #FFF8E1; }
-        .paid { color: #00703C; background-color: #E8F5E9; }
-        input, .btn-group button { padding: 15px; margin-top: 15px; border-radius: 8px; border: 1px solid #ccc; width: 100%; box-sizing: border-box; font-size: 1em; }
-        .btn-group button { background-color: #00703C; color: white; border: none; cursor: pointer; font-weight: bold; }
-        #completeButton { background-color: #00703C; display: none; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; margin-top: 15px; cursor: pointer; }
-        #qrCodeContainer img { width: 250px; height: 250px; margin-top: 25px; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        #receipt { border-top: 2px dashed #ddd; margin-top: 30px; padding-top: 20px; font-family: monospace; display: none; text-align: left; }
+        body { font-family: sans-serif; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        #terminal { padding: 40px; background-color: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; }
+        input, button { padding: 10px; margin-top: 10px; width: 100%; }
+        #statusMessage { margin-top: 15px; font-weight: bold; color: gray; }
+        #qrCodeContainer { margin-top: 20px; }
+        #receipt { margin-top: 20px; display: none; }
     </style>
 </head>
 <body>
     <div id="terminal">
-        <h1>Симулятор POS-терминала</h1>
-        <label for="amountInput" style="display: block; text-align: left; margin-bottom: 5px;">Сумма к оплате:</label>
-        <input type="number" id="amountInput" value="1500.50" step="0.01">
-        
-        <div class="btn-group">
-            <button onclick="startPayment()">Принять оплату по QR</button>
-        </div>
-        
-        <div class="status pending" id="statusMessage">Ожидание операции...</div>
-        
+        <h1>Касса</h1>
+        <input type="number" id="amountInput" value="100.00" step="1">
+        <button onclick="startPayment()">Принять оплату по QR</button>
+        <div id="statusMessage">Готов к работе</div>
         <div id="qrCodeContainer"></div>
-
-        <button id="completeButton" onclick="completePurchase()">Завершить покупку</button>
-
-        <div id="receipt">
-            <p style="text-align: center;">--- Чек ---<br>ООО "Симулятор Кассы"<br>Чек №<span id="receiptOrderId"></span><br>ИТОГ: <span id="receiptAmount"></span> ₽</p>
-        </div>
+        <div id="receipt">Чек: <span id="receiptAmount"></span> ₽ Оплачено</div>
     </div>
 
-    <!-- Socket.io удален, так как сервер не работает на Vercel -->
     <script>
-        let currentOrderId = null;
-
-        function completePurchase() {
-            document.getElementById('receipt').style.display = 'none';
-            document.getElementById('completeButton').style.display = 'none';
-            document.getElementById('statusMessage').innerText = 'Ожидание операции...';
-            document.getElementById('statusMessage').className = 'status pending';
-            document.getElementById('qrCodeContainer').innerHTML = ''; 
-            currentOrderId = null;
-        }
+        const socket = io();
 
         function startPayment() {
             const amount = document.getElementById('amountInput').value;
-            if (!amount) return alert('Введите сумму!');
+            const orderId = 'ORD-' + Date.now();
 
-            currentOrderId = 'ORD-' + Date.now();
+            // 1. Запрашиваем QR-код у нашего сервера через API
+            const qrUrl = `/api/generate-qr?orderId=${orderId}&amount=${amount}`;
             
-            document.getElementById('statusMessage').innerText = 'Сканируйте QR-код для оплаты...';
-            document.getElementById('statusMessage').className = 'status pending';
-            document.getElementById('receipt').style.display = 'none';
-            document.getElementById('completeButton').style.display = 'none'; 
-            
-            // --- ГЛАВНОЕ ИЗМЕНЕНИЕ ---
-            // Используем внешний API для генерации QR-кода прямо в браузере.
-            const paymentData = `novapay.hgweb.ru{currentOrderId}&amount=${amount}`;
-            const qrUrl = `api.qrserver.com{encodeURIComponent(paymentData)}`;
-            
-            // "Спавним" (отображаем) картинку QR-кода
+            // 2. Отображаем QR-код
             document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
+            document.getElementById('statusMessage').innerText = 'Ожидание оплаты...';
 
-            // ИМИТАЦИЯ ОПЛАТЫ: так как сервер Socket.io не работает
-            setTimeout(() => {
-                handleSuccess({ orderId: currentOrderId, amount: amount });
-            }, 3000); // Оплата "пройдет" через 3 секунды
+            // 3. Сообщаем серверу, что мы ждем этот заказ
+            socket.emit('join_cashier_order', { orderId, amount });
         }
 
-        function handleSuccess(data) {
-            document.getElementById('statusMessage').innerText = '✅ УСПЕШНО ОПЛАЧЕНО! (Симуляция)';
-            document.getElementById('statusMessage').className = 'status paid';
-            
-            document.getElementById('receiptOrderId').innerText = data.orderId;
-            document.getElementById('receiptAmount').innerText = data.amount;
-            document.getElementById('receipt').style.display = 'block';
-
-            document.getElementById('qrCodeContainer').innerHTML = ''; 
-            document.getElementById('completeButton').style.display = 'block';
-        }
+        // 4. Слушаем ответ от сервера (когда телефон нажмет кнопку)
+        socket.on('payment_status_update', (data) => {
+            if (data.status === 'paid') {
+                document.getElementById('statusMessage').innerText = '✅ ОПЛАЧЕНО!';
+                document.getElementById('receiptAmount').innerText = data.amount;
+                document.getElementById('receipt').style.display = 'block';
+                document.getElementById('qrCodeContainer').innerHTML = '';
+            }
+        });
     </script>
 </body>
 </html>
