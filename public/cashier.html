@@ -2,54 +2,46 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>POS-терминал (СБП)</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>Vercel Касса 2025</title>
+    <!-- Подключаем Pusher для получения сигналов -->
+    <script src="js.pusher.com"></script>
+    <!-- Библиотека QR -->
+    <script src="cdnjs.cloudflare.com"></script>
     <style>
-        body { font-family: sans-serif; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        #terminal { padding: 40px; background-color: white; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); text-align: center; }
-        input, button { padding: 10px; margin-top: 10px; width: 100%; }
-        #statusMessage { margin-top: 15px; font-weight: bold; color: gray; }
-        #qrCodeContainer { margin-top: 20px; }
-        #receipt { margin-top: 20px; display: none; }
+        body { font-family: sans-serif; text-align: center; background: #e8f5e9; }
+        #terminal { background: white; width: 300px; margin: 50px auto; padding: 20px; border-radius: 15px; }
+        #qrcode img { margin: 0 auto; }
     </style>
 </head>
 <body>
     <div id="terminal">
-        <h1>Касса</h1>
-        <input type="number" id="amountInput" value="100.00" step="1">
-        <button onclick="startPayment()">Принять оплату по QR</button>
-        <div id="statusMessage">Готов к работе</div>
-        <div id="qrCodeContainer"></div>
-        <div id="receipt">Чек: <span id="receiptAmount"></span> ₽ Оплачено</div>
+        <h2>Касса (Vercel)</h2>
+        <input type="number" id="amountInput" value="100">
+        <button onclick="createOrder()">Создать QR</button>
+        <div id="status">Готов</div>
+        <div id="qrcode"></div>
     </div>
 
     <script>
-        const socket = io();
+        // Инициализация Pusher с вашими ключами
+        const pusher = new Pusher('661782bbb2606b4ca876', { cluster: 'us2' });
 
-        function startPayment() {
+        function createOrder() {
             const amount = document.getElementById('amountInput').value;
-            const orderId = 'ORD-' + Date.now();
-
-            // 1. Запрашиваем QR-код у нашего сервера через API
-            const qrUrl = `/api/generate-qr?orderId=${orderId}&amount=${amount}`;
+            const orderId = 'ORD' + Date.now();
             
-            // 2. Отображаем QR-код
-            document.getElementById('qrCodeContainer').innerHTML = `<img src="${qrUrl}" alt="QR Code">`;
-            document.getElementById('statusMessage').innerText = 'Ожидание оплаты...';
+            const payUrl = `${window.location.origin}/payment.html?order_id=${orderId}&amount=${amount}`;
+            
+            document.getElementById('qrcode').innerHTML = "";
+            new QRCode(document.getElementById("qrcode"), payUrl);
+            document.getElementById('status').innerText = "Ожидание оплаты...";
 
-            // 3. Сообщаем серверу, что мы ждем этот заказ
-            socket.emit('join_cashier_order', { orderId, amount });
+            const channel = pusher.subscribe(orderId);
+            channel.bind('payment-completed', function(data) {
+                document.getElementById('status').innerText = "✅ ОПЛАЧЕНО: " + data.amount + "₽";
+                document.getElementById('qrcode').innerHTML = "🎉";
+            });
         }
-
-        // 4. Слушаем ответ от сервера (когда телефон нажмет кнопку)
-        socket.on('payment_status_update', (data) => {
-            if (data.status === 'paid') {
-                document.getElementById('statusMessage').innerText = '✅ ОПЛАЧЕНО!';
-                document.getElementById('receiptAmount').innerText = data.amount;
-                document.getElementById('receipt').style.display = 'block';
-                document.getElementById('qrCodeContainer').innerHTML = '';
-            }
-        });
     </script>
 </body>
 </html>
