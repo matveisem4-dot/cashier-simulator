@@ -4,22 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Оплата заказа</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f2f5; display: flex; justify-content-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); width: 300px; margin: auto; text-align: center; }
-        h1 { color: #21a038; font-size: 1.2em; }
-        .details { margin-bottom: 20px; font-size: 1.1em; }
-        .btn-pay { background: #21a038; color: white; border: none; padding: 15px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
-        .btn-pay:hover { background: #1a7a2c; }
-        .status { margin-top: 20px; padding: 10px; border-radius: 5px; font-weight: bold; }
-        .pending { background: #fff3cd; color: #856404; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; }
+        .btn-pay { background: green; color: white; padding: 15px; width: 100%; border: none; border-radius: 5px; }
     </style>
 </head>
 <body>
-
-<div class="container">
     <h1>Подтверждение оплаты</h1>
     <div class="details">
         Заказ №: <strong id="orderIdDisplay"></strong><br>
@@ -28,56 +19,27 @@
     
     <button class="btn-pay" onclick="confirmPayment()">Оплатить сейчас</button>
     
-    <div id="status" class="status pending">Ожидание подтверждения...</div>
-</div>
+    <script>
+        const socket = io();
+        const params = new URLSearchParams(window.location.search);
+        const orderId = params.get('order_id');
+        const amount = params.get('amount');
 
-<!-- Подключаем Socket.io с сервера -->
-<script src="/socket.io/socket.io.js"></script>
-<script>
-    const socket = io();
-    
-    // Функция для получения параметров из URL (order_id, amount)
-    function getUrlParams() {
-        const params = {};
-        window.location.search.substring(1).split('&').forEach(function(part) {
-            const pair = part.split('=');
-            params[decodeURIComponent(pair[0])] = decodeURIComponent(pair[1]);
-        });
-        return params;
-    }
-
-    const params = getUrlParams();
-    const orderId = params['order_id'];
-    const amount = params['amount'];
-
-    if (orderId && amount) {
-        document.getElementById('orderIdDisplay').innerText = orderId;
-        document.getElementById('amountDisplay').innerText = amount;
-        
-        // Как только клиент загрузил страницу, он "присоединяется" к заказу
-        socket.on('connect', () => {
-             // Сообщаем серверу, что клиент на странице этого заказа
-             socket.emit('client_join_order', orderId); 
-        });
-
-    } else {
-        document.querySelector('.container').innerHTML = '<div class="status error">Неверные параметры заказа.</div>';
-    }
-
-    // Функция подтверждения оплаты (по нажатию кнопки)
-    function confirmPayment() {
         if (orderId && amount) {
-            // Отправляем серверу сигнал, что оплата совершена
-            socket.emit('confirm_payment_simulation', { 
-                orderId: orderId, 
-                amount: amount 
-            });
-            document.getElementById('status').className = 'status success';
-            document.getElementById('status').innerText = '✅ Оплата прошла успешно!';
-            document.querySelector('.btn-pay').style.display = 'none';
+            document.getElementById('orderIdDisplay').innerText = orderId;
+            document.getElementById('amountDisplay').innerText = amount;
+            // Присоединяемся к "комнате" заказа, чтобы получать обновления
+            socket.emit('join_order', orderId); 
         }
-    }
-</script>
 
+        function confirmPayment() {
+            if (orderId && amount) {
+                // Отправляем сигнал на сервер, что оплата совершена
+                socket.emit('confirm_payment_simulation', { orderId, amount });
+                alert('Оплата прошла успешно! Касса получила сигнал.');
+                document.querySelector('.btn-pay').style.display = 'none';
+            }
+        }
+    </script>
 </body>
 </html>
