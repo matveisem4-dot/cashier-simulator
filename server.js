@@ -1,87 +1,124 @@
-// server.js (С добавленной защитой)
 const express = require('express');
 const http = require('http');
 const path = require('path');
 const { Server } = require('socket.io');
-const QRCode = require('qrcode-svg'); 
-// --- Добавлены модули безопасности ---
+const QRCode = require('qrcode-svg');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-// ------------------------------------
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
 
-// --- Применение модулей безопасности ---
-// Устанавливает безопасные HTTP-заголовки
-app.use(helmet());
+// Настройка Socket.io с поддержкой CORS
+const io = new Server(server, {
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST"]
+    }
+});
 
-// Ограничивает запросы с одного IP до 100 за 15 минут
+// --- БЕЗОПАСНОСТЬ ---
+// Helmet защищает заголовки (настроен мягко для работы скриптов и стилей)
+app.use(helmet({
+    contentSecurityPolicy: false, // Отключено для упрощения работы с внешними скриптами/стилями
+}));
+
+// Ограничение частоты запросов
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // max 100 requests per IP
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
 });
-app.use('/api/', apiLimiter); 
-// ---------------------------------------
+app.use('/api/', apiLimiter);
 
-// Обслуживаем статические файлы из папки 'public'
+// --- ПУТИ ---
+// Раздаем статику из папки 'public'
+// Если файл лежит в public/index.html, он будет доступен по адресу /index.html
 app.use(express.static(path.join(__dirname, 'public')));
 
-// API для генерации QR-кода с автоматическим определением адреса хостинга
+// --- API ГЕНЕРАЦИИ QR-КОДА ---
 app.get('/api/generate-qr', (req, res) => {
-    // --- Валидация и очистка ввода ---
-    const orderId = encodeURIComponent(req.query.orderId || 'default'); // Очищаем данные от потенциальных атак XSS
-    const rawAmount = req.query.amount;
-    const amount = parseFloat(rawAmount).toFixed(2); // Проверяем, что это число
-    if (isNaN(amount)) {
-        return res.status(400).send('Invalid amount format');
+    try {
+        const orderId = encodeURIComponent(req.query.orderId || 'default');
+        const amount = parseFloat(req.query.amount).toFixed(2);
+
+        if (isNaN(amount)) {
+            return res.status(400).send('Ошибка: Некорректная сумма');
+        }
+
+        // Определяем адрес сервера (автоматически)
+        const protocol = req.headers['x-forwarded-proto'] || 'http';
+        const host = req.get('host');
+        
+        // Ссылка, которую будет сканировать телефон
+        // Она ведет на файл payment.html в папке public
+        const paymentUrl = `${protocol}://${host}/payment.html?order_id=${orderId}&amount=${amount}`;
+        
+        // Создаем SVG QR-код
+        const svg = new QRCode({
+            content: paymentUrl,
+            padding: 4,
+            width: 256,
+            height: 256,
+            color: "#00703c",
+            background: "#ffffff",
+            ecl: "M"
+        }).svg();
+
+        res.type('image/svg+xml').send(svg);
+    } catch (err) {
+        res.status(500).send('Ошибка генерации QR');
     }
-    // ---------------------------------
-
-    const protocol = req.headers['x-forwarded-proto'] || 'http';
-    const host = req.get('host');
-    
-    const paymentUrl = `${protocol}://${host}/public/index.html?order_id=${orderId}&amount=${amount}`;
-    
-    const svg = new QRCode(paymentUrl).svg();
-    res.type('image/svg+xml').send(svg);
 });
 
+// --- LOGIC SOCKET.IO ---
 io.on('connection', (socket) => {
-    // Валидация данных в WebSocket-соединениях
-    socket.on('client_join_order', (orderId) => {
-        if (typeof orderId === 'string' && orderId.length > 5 && orderId.length < 50) {
+    console.log('Новое подключение:', socket.id);
+
+    // Вход в комнату заказа (для кассы и телефона)
+    socket.on('join_order', (orderId) => {
+        if (typeof orderId === 'string') {
             socket.join(orderId);
+            console.log(`Устройство присоединилось к заказу: ${orderId}`);
         }
     });
 
+    // Когда касса создает новый заказ
     socket.on('join_cashier_order', (data) => {
-        if (typeof data.orderId === 'string' && typeof data.amount === 'string') {
-             // Также валидируем данные при подключении кассы
+        if (data.orderId) {
             socket.join(data.orderId);
-            io.to(data.orderId).emit('new_order_ready', { 
-                orderId: encodeURIComponent(data.orderId), 
-                amount: parseFloat(data.amount).toFixed(2)
+            console.log(`Касса ожидает оплату заказа: ${data.orderId}`);
+        }
+    });
+
+    // Когда телефон подтверждает оплату
+    socket.on('confirm_payment_simulation', (data) => {
+        if (data.orderId) {
+            console.log(`Сигнал оплаты получен для: ${data.orderId}`);
+            // Рассылаем статус 'paid' всем участникам комнаты (кассе)
+            io.to(data.orderId).emit('payment_status_update', {
+                status: 'paid',
+                orderId: data.orderId,
+                amount: data.amount,
+                message: 'Оплата успешно подтверждена!'
             });
         }
     });
 
-    socket.on('confirm_payment_simulation', (data) => {
-         if (typeof data.orderId === 'string' && typeof data.amount === 'string') {
-            io.to(data.orderId).emit('payment_status_update', { 
-                status: 'paid', 
-                orderId: encodeURIComponent(data.orderId),
-                amount: parseFloat(data.amount).toFixed(2),
-                message: 'Транзакция успешно завершена!'
-            });
-        }
+    socket.on('disconnect', () => {
+        console.log('Устройство отключено');
     });
 });
 
+// --- ЗАПУСК ---
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Сервер запущен на порту ${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+    =================================================
+    ✅ СЕРВЕР КАССЫ ЗАПУЩЕН (2025)
+    🔗 Локальный адрес: http://localhost:${PORT}
+    🔗 Сетевой адрес: http://ваш_ip_адрес:${PORT}
+    =================================================
+    `);
 });
