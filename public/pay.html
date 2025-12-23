@@ -1,44 +1,29 @@
 <!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Оплата заказа</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; }
-        .btn-pay { background: green; color: white; padding: 15px; width: 100%; border: none; border-radius: 5px; }
-    </style>
-</head>
+<html>
 <body>
-    <h1>Подтверждение оплаты</h1>
-    <div class="details">
-        Заказ №: <strong id="orderIdDisplay"></strong><br>
-        Сумма: <strong id="amountDisplay"></strong> ₽
-    </div>
-    
-    <button class="btn-pay" onclick="confirmPayment()">Оплатить сейчас</button>
-    
+    <h1>Оплатить <span id="amt"></span>₽?</h1>
+    <button id="btn" onclick="pay()">ПОДТВЕРДИТЬ ОПЛАТУ</button>
+
+    <script src="js.pusher.com"></script>
     <script>
-        const socket = io();
         const params = new URLSearchParams(window.location.search);
+        document.getElementById('amt').innerText = params.get('amount');
         const orderId = params.get('order_id');
-        const amount = params.get('amount');
 
-        if (orderId && amount) {
-            document.getElementById('orderIdDisplay').innerText = orderId;
-            document.getElementById('amountDisplay').innerText = amount;
-            // Присоединяемся к "комнате" заказа, чтобы получать обновления
-            socket.emit('join_order', orderId); 
-        }
-
-        function confirmPayment() {
-            if (orderId && amount) {
-                // Отправляем сигнал на сервер, что оплата совершена
-                socket.emit('confirm_payment_simulation', { orderId, amount });
-                alert('Оплата прошла успешно! Касса получила сигнал.');
-                document.querySelector('.btn-pay').style.display = 'none';
-            }
+        async function pay() {
+            document.getElementById('btn').disabled = true;
+            // Отправляем запрос на серверную функцию Vercel
+            await fetch('/api/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    orderId: orderId,
+                    amount: params.get('amount')
+                })
+            });
+            alert("Готово! Касса получила сигнал.");
         }
     </script>
 </body>
