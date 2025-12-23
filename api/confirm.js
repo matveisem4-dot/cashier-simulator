@@ -1,17 +1,19 @@
+// server.js (Обновленный код для Vercel)
 const Pusher = require("pusher");
 
-// Ваши ключи вставлены сюда
+// Используем переменные окружения, которые вы добавили в настройках Vercel
 const pusher = new Pusher({
-  appId: "2094512",
-  key: "661782bbb2606b4ca876",
-  secret: "48167608f904d1dd3eba",
-  cluster: "us2",
+  appId: process.env.PUSHER_APP_ID,
+  key: process.env.PUSHER_KEY,
+  secret: process.env.PUSHER_SECRET,
+  cluster: process.env.PUSHER_CLUSTER,
   useTLS: true
 });
 
-export default async function handler(req, res) {
+export default async function handler (req, res) {
   if (req.method === 'POST') {
-    const { orderId, amount } = req.body; // Vercel body parser включен по умолчанию
+    // Vercel body parser включен по умолчанию
+    const { orderId, amount } = req.body; 
 
     // Отправляем сигнал кассе через Pusher
     await pusher.trigger(orderId, "payment-completed", {
@@ -21,4 +23,4 @@ export default async function handler(req, res) {
     return res.status(200).json({ sent: true, orderId });
   }
   res.status(405).send("Method not allowed");
-}
+};
